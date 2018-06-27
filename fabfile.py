@@ -24,25 +24,25 @@ def installUtilities():
     run('yes | sudo apt-get install gcc g++ gfortran cmake make git libnetcdf-dev libnetcdff-dev netcdf-bin xmlstarlet')
         
     
-def getGOTM():
-    run(' '.join('''if [ ! -d ./code ];
-                    then 
-                        git clone https://github.com/gotm-model/code.git &&
-                        cd code &&
-                        git checkout 0a1d6ddccb1f892cbc4354509b4e4d256187fd2b; 
-                    fi
-           '''.replace('\n', ' ').split())
-       )
-
 #def getGOTM():
 #    run(' '.join('''if [ ! -d ./code ];
 #                    then 
 #                        git clone https://github.com/gotm-model/code.git &&
 #                        cd code &&
-#                        git checkout lake;
+#                        git checkout 0a1d6ddccb1f892cbc4354509b4e4d256187fd2b; 
 #                    fi
 #           '''.replace('\n', ' ').split())
-#        )
+#       )
+
+def getGOTM():
+    run(' '.join('''if [ ! -d ./code ];
+                    then 
+                        git clone https://github.com/gotm-model/code.git &&
+                        cd code &&
+                        git checkout lake;
+                    fi
+           '''.replace('\n', ' ').split())
+        )
     
 def getGOTMGUI():
     run(' '.join('''if [ ! -d ./gotmgui ];
@@ -67,7 +67,7 @@ def getFABM():
        )
     
 def addGOTMToPath():
-    run('''echo 'export GOTMDIR=~/code' >> ~/.bashrc ''')
+    run('''echo 'export GOTMDIR=~/code' >> ~/.profile ''')
         
 def compileFABM():
     run('rm -rf fabm-prognos/build')
@@ -107,6 +107,8 @@ def setSchemaDir(filename):
     run(''' 'sed -i 's_\(--schemadir=.*\s\)_--schemadir="$GOTMDIR"/schemas _g' {}'''.format(scenarioFile))
 
 def editScenario(filename):
+    #run("tail ~/.profile")
+    #run('echo $GOTMDIR')
     run('''cd "$(dirname {})" && editscenario --schemadir "$GOTMDIR"/schemas -e nml . langtjern.xml'''.format(filename))
 
 def runGOTM(filename):
@@ -167,7 +169,7 @@ def testRun(filename):
     editScenario.roles=('stage',)
     runGOTM.roles=('stage',)
     
-    #changeScenarioInXML('gotm-5.1','gotm-4.1',filename)
+    changeScenarioInXML('gotm-5.1','gotm-5.3',filename)
     #setSchemaDir(filename)
     editScenario(filename)
     runGOTM(filename)
