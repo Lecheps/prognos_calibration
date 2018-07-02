@@ -1,0 +1,10 @@
+FROM debian:latest
+RUN apt-get update && apt-get install -y \
+    cmake \
+    make \
+    gcc \
+    gfortran \  
+    libnetcdf-dev \
+    libnetcdff-dev \
+    netcdf-bin \
+    && rm -rf /var/lib/apt/lists/*
