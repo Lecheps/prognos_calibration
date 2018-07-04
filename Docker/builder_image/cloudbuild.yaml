@@ -1,0 +1,8 @@
+steps:
+#Creating a debian docker image with the build environment
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'gotmBuilder'
+  args: ['build', '--rm=false', '-t', 'gcr.io/nivacatchment/gotm-builder', '.']
+    
+images:
+- 'gcr.io/nivacatchment/gotm-builder'

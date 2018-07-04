@@ -61,6 +61,10 @@ steps:
   - name: 'gotm'
     path: /root/gotm
 
+#Create a volume to share data between images
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['volume', 'create', '--name', 'tempVol']
+    
 #Creating a debian docker image with the build environment
 - name: 'gcr.io/cloud-builders/docker'
   #waitFor: ['-']
@@ -69,23 +73,33 @@ steps:
   volumes:
   - name: 'gotm'
     path: '/root/gotm'
-  
+
+    
 #Actually creating the build environment using a bash script 
-- name: 'gotm-build'
-  args: ['bash', './gotm-fabm.sh']
+#- name: 'gotm-build'
+  #args: ['bash', './gotm-fabm.sh']
+  ##waitFor: ['gotmBuilder', 'cloneGOTM', 'cloneFABM']
+  ##id: 'build'
+  #volumes:
+  #- name: 'gotm'
+    #path: '/root/gotm'
+
+ #Actually creating the build environment using a bash script 
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['run', '--volume=tempVol:/share' , 'debian']
   #waitFor: ['gotmBuilder', 'cloneGOTM', 'cloneFABM']
   #id: 'build'
   volumes:
   - name: 'gotm'
-    path: '/root/gotm'
+    path: '/root/gotm'   
 
 #Building docker image containing  gotm
-- name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '-t', 'gcr.io/nivacatchment/titio:latest', '.' ]
+#- name: 'gcr.io/cloud-builders/docker'
+#  args: [ 'build', '-t', 'gcr.io/nivacatchment/titio:latest', '.' ]
   #waitFor: 'build'
-  volumes:
-  - name: 'gotm'
-    path: '/root/gotm'
+  #  volumes:
+  #- name: 'gotm'
+  #  path: '/root/gotm'
   #entrypoint: '/root/gotm'
 
 images:

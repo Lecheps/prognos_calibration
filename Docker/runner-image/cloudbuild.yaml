@@ -1,0 +1,118 @@
+steps:
+# Decrypt the file containing the key and place the decrypted file 'ssh' volume
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['volume', 'create', 'shuttle']
+  
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['volume', 'inspect', 'shuttle'] 
+
+- id: 'decrypt'
+  name: 'gcr.io/cloud-builders/gcloud'
+  args:
+  - kms
+  - decrypt
+  - --ciphertext-file=fabmKey.enc
+  - --plaintext-file=/root/.ssh/fabmKey
+  - --location=global
+  - --keyring=jlg-keyring
+  - --key=gitlab-key
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  waitFor: ['-']  
+
+# Set up git access with decrypted key
+- id: 'setKey'
+  name: 'gcr.io/cloud-builders/git'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    chmod 600 /root/.ssh/fabmKey
+    cat <<EOF >/root/.ssh/config
+    Hostname gitlab.au.dk
+    IdentityFile /root/.ssh/fabmKey
+    EOF
+    mv known_hosts /root/.ssh/known_hosts
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  waitFor: 'decrypt'
+
+# cloning fabm: requires key
+- id: 'FABM-git'
+  name: 'gcr.io/cloud-builders/git'
+  args:
+  - clone
+  - git@gitlab.au.dk:anbios/fabm-prognos.git
+  - /root/gotm/fabm-prognos
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  - name: 'gotm'
+    path: '/root/gotm'
+  waitFor: 'setKey'
+  
+#cloning gotm
+- id: 'GOTM-git'
+  name: 'gcr.io/cloud-builders/git'
+  args: 
+  - clone
+  - -b
+  - lake
+  - https://github.com/gotm-model/code.git
+  - /root/gotm/code/
+  volumes: 
+  - name: 'gotm'
+    path: '/root/gotm'
+  waitFor: ['-']
+  
+  
+- id: 'builder'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/nivacatchment/gotm-runner', '.']  
+  volumes: 
+  - name: 'gotm'
+    path: '/root/gotm'
+  waitFor: ['FABM-git', 'GOTM-git']
+
+- id: 'compile'
+  name: 'gcr.io/nivacatchment/gotm-runner'
+  args: ['bash', './gotm-fabm.sh'] 
+  volumes: 
+  - name: 'gotm'
+    path: '/root/gotm'
+  waitFor: ['builder']
+
+- id: 'getGOTM'
+  name: 'gcr.io/cloud-builders/gsutil'
+  args:
+  - 'cp'
+  - '-r'
+  - '/root/gotm/code/build/gotm'
+  - 'gs://jlg-bucket/dummy.file'
+  volumes: 
+  - name: 'gotm'
+    path: '/root/gotm'
+  waitFor: ['compile']  
+  
+#- id: 'getGOTM'
+  #name: 'gcr.io/cloud-builders/docker'
+  #args:
+  #- 'push' 
+  #- 'gcr.io/nivacatchment/gotm-runner'
+  #volumes: 
+  #- name: 'gotm'
+    #path: '/root/gotm'
+  #waitFor: ['builder']  
+
+#- id: 'runner'
+  #name: 'gcr.io/cloud-builders/docker'
+  #args: ['build', '-t', 'gcr.io/nivacatchment/gotm-runner', '.'] 
+  #volumes: 
+  #- name: 'gotm'
+    #path: '/root/gotm'
+  #waitFor: ['compile'] 
+  
+#images:
+#- 'gcr.io/nivacatchment/gotm-runner'
