@@ -83,18 +83,26 @@ steps:
   - name: 'gotm'
     path: '/root/gotm'
   waitFor: ['builder']
+  
+- id: 'packaging'
+  name: 'gcr.io/nivacatchment/gotm-runner'
+  args: ['bash', './package-gotm.sh'] 
+  volumes: 
+  - name: 'gotm'
+    path: '/root/gotm'
+  waitFor: ['compile']
 
 - id: 'getGOTM'
   name: 'gcr.io/cloud-builders/gsutil'
   args:
   - 'cp'
   - '-r'
-  - '/root/gotm/code/build/gotm'
-  - 'gs://jlg-bucket/dummy.file'
+  - '/root/gotm/gotm.tar'
+  - 'gs://jlg-bucket/gotm.tar'
   volumes: 
   - name: 'gotm'
     path: '/root/gotm'
-  waitFor: ['compile']  
+  waitFor: ['packaging']  
   
 #- id: 'getGOTM'
   #name: 'gcr.io/cloud-builders/docker'
