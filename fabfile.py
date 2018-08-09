@@ -4,11 +4,11 @@ from fabric.api import *
 import os
 
 
-env.hosts=['35.234.89.251']
+env.hosts=['35.198.160.181']
 env.user='jose-luis'
 env.key_filename='/home/jose-luis/.ssh/gotmKeys/jose-luis'
-env.roledefs={'stage':['35.234.89.251'],
-                'production': [''],                                 
+env.roledefs={'stage':['35.198.160.181'],
+                'production': [''],
                }
 env.disable_known_hosts = False
 env.reject_unknown_hosts = False
@@ -16,37 +16,26 @@ env.reject_unknown_hosts = False
 def whoAmI():
     run('uname -a')
     run ('whoami')
-    
+
 def updateMachine():
     run('sudo apt-get update')
 
 def installUtilities():
     run('yes | sudo apt-get install gcc g++ gfortran cmake make git libnetcdf-dev libnetcdff-dev netcdf-bin xmlstarlet')
-        
-    
-#def getGOTM():
-#    run(' '.join('''if [ ! -d ./code ];
-#                    then 
-#                        git clone https://github.com/gotm-model/code.git &&
-#                        cd code &&
-#                        git checkout 0a1d6ddccb1f892cbc4354509b4e4d256187fd2b; 
-#                    fi
-#           '''.replace('\n', ' ').split())
-#       )
 
 def getGOTM():
     run(' '.join('''if [ ! -d ./code ];
-                    then 
+                    then
                         git clone https://github.com/gotm-model/code.git &&
                         cd code &&
                         git checkout lake;
                     fi
            '''.replace('\n', ' ').split())
         )
-    
+
 def getGOTMGUI():
     run(' '.join('''if [ ! -d ./gotmgui ];
-                    then 
+                    then
                         git clone https://github.com/BoldingBruggeman/gotmgui.git &&
                         sudo cp -r ~/gotmgui/gotmgui  /usr/local/lib/python2.7/dist-packages;
                     fi
@@ -59,16 +48,16 @@ def getFABM():
     put('fabmKey','Keys/fabmKey')
     run('sudo chmod 400 Keys/fabmKey ')
     run(' '.join('''if [ ! -d ./fabm-prognos ];
-                    then 
+                    then
                         GIT_SSH_COMMAND='ssh -i ./Keys/fabmKey -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' git clone git@gitlab.au.dk:anbios/fabm-prognos.git;
                     fi
            '''.replace('\n', ' ').split()
                 )
        )
-    
+
 def addGOTMToPath():
     run('''echo 'export GOTMDIR=~/code' >> ~/.profile ''')
-        
+
 def compileFABM():
     run('rm -rf fabm-prognos/build')
     run('mkdir -p fabm-prognos/build')
@@ -85,20 +74,20 @@ def installGOTM():
 def getLakeSetups():
     run('rm -rf PROGNOS')
     run(' '.join('''if [ ! -d ./PROGNOS ];
-                    then 
+                    then
                         GIT_SSH_COMMAND='ssh -i ./Keys/fabmKey -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' git clone git@gitlab.au.dk:anbios/PROGNOS.git;
                     fi
            '''.replace('\n', ' ').split()
                 )
-       ) 
-    
+       )
+
 
 def getPip():
     run('yes | sudo apt-get install python-pip')
 
 def getModules():
-    run('sudo pip install xmlstore editscenario xmlplot matplotlib')   
-    
+    run('sudo pip install xmlstore editscenario xmlplot matplotlib')
+
 def changeScenarioInXML(oldScenario,newScenario,file):
     run('''xmlstarlet ed --inplace -u "scenario[@version='{}']/@version" -v '{}' {}'''.format(oldScenario,newScenario,file))
 
@@ -113,7 +102,7 @@ def editScenario(filename):
 
 def runGOTM(filename):
     run('cd "$(dirname "{}")" && gotm'.format(filename));
-        
+
 
 @task
 def testConnection():
@@ -128,7 +117,7 @@ def update():
 @task
 def getUtilities():
     updateMachine.roles=('stage',)
-    installUtilities.roles=('stage',) 
+    installUtilities.roles=('stage',)
     getPip.roles=('stage',)
     getModules.roles=('stage',)
     execute(update)
@@ -146,7 +135,7 @@ def downloadModels():
     execute(getGOTM)
     execute(getGOTMGUI)
     execute(addGOTMToPath)
-    
+
 @task
 def compileModels():
     compileFABM.roles=('stage',)
@@ -160,20 +149,20 @@ def compileModels():
 def getPROGNOS():
     getLakeSetups.roles=('stage',)
     execute(getLakeSetups)
-    
-    
+
+
 @task
 def testRun(filename):
     changeScenarioInXML.roles=('stage',)
     setSchemaDir.roles=('stage',)
     editScenario.roles=('stage',)
     runGOTM.roles=('stage',)
-    
+
     changeScenarioInXML('gotm-5.1','gotm-5.3',filename)
     #setSchemaDir(filename)
     editScenario(filename)
     runGOTM(filename)
-    
-    
 
-   
+
+
+
