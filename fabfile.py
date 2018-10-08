@@ -4,10 +4,11 @@ from fabric.api import *
 import os
 
 
-env.hosts=['35.198.160.181']
+
+env.hosts=['35.198.75.197']
 env.user='jose-luis'
 env.key_filename='/home/jose-luis/.ssh/gotmKeys/jose-luis'
-env.roledefs={'stage':['35.198.160.181'],
+env.roledefs={'stage':['35.198.75.197'],
                 'production': [''],
                }
 env.disable_known_hosts = False
@@ -21,7 +22,7 @@ def updateMachine():
     run('sudo apt-get update')
 
 def installUtilities():
-    run('yes | sudo apt-get install gcc g++ gfortran cmake make git libnetcdf-dev libnetcdff-dev netcdf-bin xmlstarlet')
+    run('yes | sudo apt-get install gcc g++ gfortran cmake make git libnetcdf-dev libnetcdff-dev netcdf-bin xmlstarlet tmux unzip')
 
 def getGOTM():
     run(' '.join('''if [ ! -d ./code ];
@@ -56,7 +57,7 @@ def getFABM():
        )
 
 def addGOTMToPath():
-    run('''echo 'export GOTMDIR=~/code' >> ~/.profile ''')
+    run('''echo 'export GOTMDIR=~/code' | sudo tee --append /etc/profile ''')
 
 def compileFABM():
     run('rm -rf fabm-prognos/build')
@@ -81,12 +82,11 @@ def getLakeSetups():
                 )
        )
 
-
 def getPip():
     run('yes | sudo apt-get install python-pip')
 
 def getModules():
-    run('sudo pip install xmlstore editscenario xmlplot matplotlib')
+    run('sudo pip install xmlstore editscenario xmlplot matplotlib pyyaml')
 
 def changeScenarioInXML(oldScenario,newScenario,file):
     run('''xmlstarlet ed --inplace -u "scenario[@version='{}']/@version" -v '{}' {}'''.format(oldScenario,newScenario,file))
@@ -102,8 +102,35 @@ def editScenario(filename):
 
 def runGOTM(filename):
     run('cd "$(dirname "{}")" && gotm'.format(filename));
+    
+def ACPy(filename):
+    put(filename,'.')
+    run('sudo pip install pp {}'.format(filename))
 
-
+def ACPy_test(filename):
+    put(filename, './PROGNOS/langtjern/acpy/')
+    #run('''cd PROGNOS/langtjern/acpy/ &&
+    #       acpy run config_acpy.xml  
+    #    '''
+    #   )
+    
+def putForcings():
+    run(''' sudo rm -r ~/PROGNOS/langtjern/processed_data''')
+    put('''/home/jose-luis/Envs/prognos_get_data_py3/notebook/results/''','~/PROGNOS/langtjern/')
+    run('mv ~/PROGNOS/langtjern/results/ ~/PROGNOS/langtjern/processed_data/')
+    run('cp ~/PROGNOS/langtjern/processed_data/langtjern-weather.dat ~/PROGNOS/langtjern/meteo_file.dat')
+    
+def getFiles():
+    get('~/PROGNOS/langtjern/acpy/langtjern.db','./langtjern.db')
+    
+def uploadFile(source,destination):
+    put(source,destination)
+    extension = os.path.splitext(source)[1]
+    print(extension)
+    if os.path.splitext(source)[1] == '.zip':
+        print('I am alive')
+        run('cd {} && unzip {}'.format( destination , source ) )
+    
 @task
 def testConnection():
     whoAmI.roles=('stage',)
@@ -158,11 +185,29 @@ def testRun(filename):
     editScenario.roles=('stage',)
     runGOTM.roles=('stage',)
 
-    changeScenarioInXML('gotm-5.1','gotm-5.3',filename)
+    #changeScenarioInXML('gotm-5.1','gotm-5.3',filename)
     #setSchemaDir(filename)
     editScenario(filename)
     runGOTM(filename)
 
-
-
-
+@task
+def installACPy(filename):
+    ACPy.roles=('stage',)
+    ACPy(filename)
+    
+@task 
+def runACPy(filename):
+    ACPy.roles=('stage',)
+    ACPy_test(filename)
+    
+    
+@task 
+def loadForcings():
+    putForcings.roles=('stage',)
+    execute(putForcings)
+    
+@task
+def upload(source,destination):
+    uploadFile.roles=('stage',)
+    execute(uploadFile,source,destination)
+    
